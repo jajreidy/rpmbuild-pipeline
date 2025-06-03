@@ -151,6 +151,27 @@ spec:
               #!/usr/bin/env bash
               set -e
               date "+%s" | tr -d '\n' | tee $(results.timestamp.path)
+    - name: create-pulp-access-request
+      taskSpec:
+        steps:
+        - name: kubectl-apply
+          image: quay.io/openshift/origin-cli:latest
+          script: |
+            cat <<EOF > pulp-access-request.yaml
+            apiVersion: pulp.konflux-ci.dev/v1alpha1
+            kind: PulpAccessRequest
+            metadata:
+              name: test-pulp-access-request
+              labels:
+                app: test-app
+                environment: test
+              annotations:
+                description: "PulpAccessRequest for X"
+            spec: {}
+            EOF
+            
+            kubectl apply -f pulp-access-request.yaml
+            echo "PulpAccessRequest  created successfully"
     - name: init
       retries: 3
       params:
