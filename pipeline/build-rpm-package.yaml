@@ -17,7 +17,7 @@ spec:
         - name: git-url
           value: $(tasks.clone-repository.results.url)?rev=$(tasks.clone-repository.results.commit)
         - name: image-url
-          value: $(tasks.upload-to-quay.results.IMAGE_URL)
+          value: $(tasks.upload-to-pulp.results.IMAGE_URL)
       taskRef:
         params:
           - name: name
@@ -30,7 +30,7 @@ spec:
     - name: show-sbom
       params:
         - name: IMAGE_URL
-          value: $(tasks.upload-to-quay.results.IMAGE_URL)
+          value: $(tasks.upload-to-pulp.results.IMAGE_URL)
       taskRef:
         params:
           - name: name
@@ -56,9 +56,6 @@ spec:
       type: array
       default:
         - aarch64
-        - ppc64le
-        - s390x
-        - x86_64
     - default: "false"
       description: Force rebuild image
       name: rebuild
@@ -84,13 +81,13 @@ spec:
         Testing-only.  This must be filled as parameter in tests so we can point
         at the Tasks for the same git-revision.
       type: string
-      default: "https://github.com/konflux-ci/rpmbuild-pipeline.git"
+      default: "https://github.com/jajreidy/rpmbuild-pipeline.git"
     - name: self-ref-revision
       description: |
         Testing-only.  This must be filled as parameter in tests so we can point
         at the Tasks for the same git-revision.  For production it defaults to "main".
       type: string
-      default: "main"
+      default: "pulp-only"
     - description: |
         Multi-arch container image that ships Mock + the needed Mock
         configuration, dist-git-client, koji-client, and other RPM-build related
@@ -102,7 +99,7 @@ spec:
       description: |
         OCI registry URL where the pipeline stores trusted artifacts, including
         both resulting artifacts and intermediary by-products.
-      default: quay.io/redhat-user-workloads/$(context.taskRun.namespace)/$(params.package-name)
+      default: quay.io/redhat-user-workloads/$(context.taskRun.namespace)/rpms/$(params.package-name)
     - description: |
         Name of specfile when specfile doesn't have the same prefix name as package name.
         Default is null and package-name.spec is used.
@@ -147,19 +144,13 @@ spec:
       value: $(tasks.clone-repository.results.commit)
     - description: ""
       name: IMAGE_URL
-      value: $(tasks.upload-to-quay.results.IMAGE_URL)
+      value: $(tasks.upload-to-pulp.results.IMAGE_URL)
     - description: ""
       name: IMAGE_DIGEST
-      value: $(tasks.upload-to-quay.results.IMAGE_DIGEST)
+      value: $(tasks.upload-to-pulp.results.IMAGE_DIGEST)
     - name: SBOM_BLOB_URL
       description: SPDX SBOM
-      value: $(tasks.upload-to-quay.results.SBOM_BLOB_URL)
-    - description: ""
-      name: PULP-IMAGE_URL
-      value: $(tasks.upload-to-quay.results.PULP-IMAGE_URL)
-    - description: ""
-      name: PULP-IMAGE_DIGEST
-      value: $(tasks.upload-to-quay.results.PULP-IMAGE_DIGEST)
+      value: $(tasks.upload-to-pulp.results.SBOM_BLOB_URL)
   tasks:
     - name: store-start-time
       retries: 3
@@ -206,7 +197,7 @@ spec:
         - name: depth
           value: 0
         - name: ociStorage
-          value: $(params.ociStorage).git
+          value: $(params.ociStorage)
         - name: ociArtifactExpiresAfter
           value: $(params.ociArtifactExpiresAfter)
       runAfter:
@@ -246,7 +237,7 @@ spec:
         - name: source-artifact
           value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
         - name: ociStorage
-          value: $(params.ociStorage).rpm-sources
+          value: $(params.ociStorage)
         - name: ociArtifactExpiresAfter
           value: $(params.ociArtifactExpiresAfter)
         - name: script-environment-image
@@ -274,7 +265,7 @@ spec:
         - name: source-artifact
           value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
         - name: ociStorage
-          value: $(params.ociStorage).mock-config
+          value: $(params.ociStorage)
         - name: script-environment-image
           value: $(params.script-environment-image)
         - name: mock-config-template-filename-in-sources
@@ -301,7 +292,7 @@ spec:
         - name: dependencies-artifact
           value: $(tasks.process-sources.results.dependencies-artifact)
         - name: ociStorage
-          value: $(params.ociStorage).calculation-x86_64
+          value: $(params.ociStorage)
         - name: ociArtifactExpiresAfter
           value: $(params.ociArtifactExpiresAfter)
         - name: specfile
@@ -337,7 +328,7 @@ spec:
         - name: calculation-artifact
           value: $(tasks.calculate-deps-x86-64.results.calculation-artifact)
         - name: ociStorage
-          value: $(params.ociStorage).rpmbuild-x86_64
+          value: $(params.ociStorage)
         - name: ociArtifactExpiresAfter
           value: $(params.ociArtifactExpiresAfter)
         - name: specfile
@@ -369,7 +360,7 @@ spec:
         - name: dependencies-artifact
           value: $(tasks.process-sources.results.dependencies-artifact)
         - name: ociStorage
-          value: $(params.ociStorage).calculation-aarch64
+          value: $(params.ociStorage)
         - name: ociArtifactExpiresAfter
           value: $(params.ociArtifactExpiresAfter)
         - name: specfile
@@ -405,7 +396,7 @@ spec:
         - name: calculation-artifact
           value: $(tasks.calculate-deps-aarch64.results.calculation-artifact)
         - name: ociStorage
-          value: $(params.ociStorage).rpmbuild-aarch64
+          value: $(params.ociStorage)
         - name: ociArtifactExpiresAfter
           value: $(params.ociArtifactExpiresAfter)
         - name: specfile
@@ -437,7 +428,7 @@ spec:
         - name: dependencies-artifact
           value: $(tasks.process-sources.results.dependencies-artifact)
         - name: ociStorage
-          value: $(params.ociStorage).calculation-s390x
+          value: $(params.ociStorage)
         - name: ociArtifactExpiresAfter
           value: $(params.ociArtifactExpiresAfter)
         - name: specfile
@@ -473,7 +464,7 @@ spec:
         - name: calculation-artifact
           value: $(tasks.calculate-deps-s390x.results.calculation-artifact)
         - name: ociStorage
-          value: $(params.ociStorage).rpmbuild-s390x
+          value: $(params.ociStorage)
         - name: ociArtifactExpiresAfter
           value: $(params.ociArtifactExpiresAfter)
         - name: specfile
@@ -505,7 +496,7 @@ spec:
         - name: dependencies-artifact
           value: $(tasks.process-sources.results.dependencies-artifact)
         - name: ociStorage
-          value: $(params.ociStorage).calculation-ppc64le
+          value: $(params.ociStorage)
         - name: ociArtifactExpiresAfter
           value: $(params.ociArtifactExpiresAfter)
         - name: specfile
@@ -541,7 +532,7 @@ spec:
         - name: calculation-artifact
           value: $(tasks.calculate-deps-ppc64le.results.calculation-artifact)
         - name: ociStorage
-          value: $(params.ociStorage).rpmbuild-ppc64le
+          value: $(params.ociStorage)
         - name: ociArtifactExpiresAfter
           value: $(params.ociArtifactExpiresAfter)
         - name: specfile
@@ -555,7 +546,7 @@ spec:
             value: $(params.self-ref-revision)
           - name: pathInRepo
             value: task/rpmbuild.yaml
-    - name: upload-to-quay
+    - name: upload-to-pulp
       params:
         - name: ociStorage
           value: $(params.ociStorage)
@@ -592,7 +583,7 @@ spec:
           - name: revision
             value: $(params.self-ref-revision)
           - name: pathInRepo
-            value: task/import-to-quay.yaml
+            value: task/import-to-pulp.yaml
     - name: check-noarch-rpms
       runAfter:
         - rpmbuild-s390x
